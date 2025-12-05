@@ -1,36 +1,107 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'login_screen.dart';
+import 'register_screen.dart';
+import 'main_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        scaffoldBackgroundColor: const Color(0xFF2C3639),
+        fontFamily: 'SpaceGrotesk',
+        colorScheme: ColorScheme(
+          brightness: Brightness.dark,
+          primary: const Color(0xFF3F4E4F),
+          onPrimary: const Color(0xFFA27B5C),
+          secondary: const Color(0xFF3F4E4F),
+          onSecondary: const Color(0xFFA27B5C),
+          surface: const Color(0xFF2C3639),
+          onSurface: const Color(0xFFA27B5C),
+          error: Colors.red,
+          onError: Colors.white,
+        ),
+        textTheme: TextTheme(
+          headlineLarge: TextStyle(
+            fontFamily: 'BebasNeue',
+            fontWeight: FontWeight.w400,
+            fontSize: 36,
+          ),
+          headlineMedium: TextStyle(
+            fontFamily: 'BebasNeue',
+            fontWeight: FontWeight.w400,
+            fontSize: 28,
+          ),
+          headlineSmall: TextStyle(
+            fontFamily: 'BebasNeue',
+            fontWeight: FontWeight.w400,
+            fontSize: 22,
+          ),
+          titleLarge: TextStyle(
+            fontFamily: 'Raleway',
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+          titleMedium: TextStyle(
+            fontFamily: 'Raleway',
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+          titleSmall: TextStyle(
+            fontFamily: 'Raleway',
+            fontWeight: FontWeight.normal,
+            fontSize: 16,
+          ),
+          bodyLarge: TextStyle(
+            fontFamily: 'SpaceGrotesk',
+            fontWeight: FontWeight.normal,
+            fontSize: 16,
+          ),
+          bodyMedium: TextStyle(
+            fontFamily: 'SpaceGrotesk',
+            fontWeight: FontWeight.normal,
+            fontSize: 14,
+          ),
+          bodySmall: TextStyle(
+            fontFamily: 'SpaceGrotesk',
+            fontWeight: FontWeight.normal,
+            fontSize: 12,
+          ),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF3F4E4F),
+          foregroundColor: Color(0xFFA27B5C),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF3F4E4F),
+            foregroundColor: const Color(0xFFA27B5C),
+            textStyle: const TextStyle(
+              fontFamily: 'Raleway',
+              color: Color(0xFFA27B5C),
+            ),
+          ),
+        ),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      initialRoute: '/login',
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
+        '/main': (context) => const MainPage(),
+      },
     );
   }
 }
