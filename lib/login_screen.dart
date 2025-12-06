@@ -26,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
-      // Navigate to main page
+      // Navigate to main page after successful login
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/main');
       }

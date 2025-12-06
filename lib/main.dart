@@ -4,17 +4,21 @@ import 'firebase_options.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
 import 'main_page.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'message_board_page.dart';
+import 'voting_page.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
+  User? user = FirebaseAuth.instance.currentUser;
+  runApp(MyApp(initialRoute: user == null ? '/login' : '/main'));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final String initialRoute;
+  const MyApp({super.key, this.initialRoute = '/login'});
 
   @override
   Widget build(BuildContext context) {
@@ -96,11 +100,13 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      initialRoute: '/login',
+      initialRoute: initialRoute,
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/main': (context) => const MainPage(),
+        '/voting': (context) => const VotingPage(),
+        '/messageboard': (context) => const MessageBoardPage(),
       },
     );
   }

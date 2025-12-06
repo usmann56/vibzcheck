@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'voting_page.dart';
 
 class MainPage extends StatelessWidget {
   const MainPage({super.key});
@@ -9,7 +10,34 @@ class MainPage extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     return Scaffold(
       appBar: AppBar(title: const Text('VibzCheck')),
-      body: Center(
+      body: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          if (details.primaryVelocity != null) {
+            if (details.primaryVelocity! > 200) {
+              Navigator.of(context).push(
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      const VotingPage(),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                        const begin = Offset(-1.0, 0.0);
+                        const end = Offset.zero;
+                        final tween = Tween(
+                          begin: begin,
+                          end: end,
+                        ).chain(CurveTween(curve: Curves.ease));
+                        return SlideTransition(
+                          position: animation.drive(tween),
+                          child: child,
+                        );
+                      },
+                ),
+              );
+            } else if (details.primaryVelocity! < -200) {
+              Navigator.of(context).pushNamed('/messageboard');
+            }
+          }
+        },
         child: Column(
           children: [
             SizedBox(height: screenHeight * 0.05),
