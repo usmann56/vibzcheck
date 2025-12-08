@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'voting_page.dart';
+import 'screens/search_screen.dart';
 
 class MainPage extends StatelessWidget {
   const MainPage({super.key});
@@ -144,8 +145,14 @@ class MainPage extends StatelessWidget {
             right: 0,
             child: Center(
               child: FloatingActionButton(
-                onPressed: () {}, // todo
-                child: Icon(Icons.add),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const SearchScreen(),
+                    ),
+                  );
+                },
+                child: const Icon(Icons.add),
               ),
             ),
           ),
