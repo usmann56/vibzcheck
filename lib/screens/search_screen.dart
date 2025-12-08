@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../../utils/spotify.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -17,9 +18,6 @@ class _SearchScreenState extends State<SearchScreen> {
 
   bool _isLoading = false;
 
-  // todo implement accecctoken logic
-  final String _accessToken = "";
-
   Future<void> searchSpotify(String query) async {
     if (query.isEmpty) return;
 
@@ -32,6 +30,7 @@ class _SearchScreenState extends State<SearchScreen> {
       "https://api.spotify.com/v1/search?q=$query&type=track&limit=10",
     );
 
+    final String? _accessToken = await fetchSpotifyAccessToken();
     final res = await http.get(
       url,
       headers: {"Authorization": "Bearer $_accessToken"},
