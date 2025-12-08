@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -50,16 +51,33 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
-  void addToPlaylist() {
+  void addToPlaylist() async {
     if (_selectedTrack == null) return;
 
-    final trackName = _selectedTrack["name"];
-    final artist = _selectedTrack["artists"][0]["name"];
+    final playlistRef = FirebaseFirestore.instance
+        .collection('playlists')
+        .doc('defaultPlaylist');
 
-    // todo implement playlist logic
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text("Added: $trackName – $artist")));
+    final songData = {
+      "id": _selectedTrack["id"],
+      "name": _selectedTrack["name"],
+      "artist": _selectedTrack["artists"][0]["name"],
+      "albumArt": _selectedTrack["album"]["images"].isNotEmpty
+          ? _selectedTrack["album"]["images"][0]["url"]
+          : null,
+      "previewUrl": _selectedTrack["preview_url"], // optional
+    };
+
+    // Add song to the shared playlist
+    await playlistRef.set({
+      "songs": FieldValue.arrayUnion([songData]),
+    }, SetOptions(merge: true));
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Added: ${songData['name']} – ${songData['artist']}"),
+      ),
+    );
 
     Navigator.pop(context);
   }
