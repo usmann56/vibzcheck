@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-class VotingPage extends StatefulWidget {
-  const VotingPage({super.key});
+class VotingScreen extends StatefulWidget {
+  const VotingScreen({super.key});
 
   @override
-  State<VotingPage> createState() => _VotingPageState();
+  State<VotingScreen> createState() => _VotingScreenState();
 }
 
-class _VotingPageState extends State<VotingPage> {
+class _VotingScreenState extends State<VotingScreen> {
   // Example placeholder song list
   final List<String> songs = [
     'Song actively being voted on (highlighted)',

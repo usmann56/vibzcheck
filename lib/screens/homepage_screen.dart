@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:vibzcheck/message_board_page.dart';
-import 'voting_page.dart';
-import 'screens/search_screen.dart';
+import 'package:vibzcheck/screens/message_board_screen.dart';
+import 'voting_screen.dart';
+import 'search_screen.dart';
 
-class MainPage extends StatelessWidget {
-  const MainPage({super.key});
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +19,7 @@ class MainPage extends StatelessWidget {
               Navigator.of(context).push(
                 PageRouteBuilder(
                   pageBuilder: (context, animation, secondaryAnimation) =>
-                      const VotingPage(),
+                      const VotingScreen(),
                   transitionsBuilder:
                       (context, animation, secondaryAnimation, child) {
                         const begin = Offset(-1.0, 0.0);
@@ -136,7 +136,7 @@ class MainPage extends StatelessWidget {
             child: FloatingActionButton(
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const VotingPage()),
+                  MaterialPageRoute(builder: (context) => const VotingScreen()),
                 );
               },
               child: Icon(Icons.how_to_vote),
@@ -170,7 +170,7 @@ class MainPage extends StatelessWidget {
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => const MessageBoardPage(),
+                    builder: (context) => const MessageBoardScreen(),
                   ),
                 );
               },

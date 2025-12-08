@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class MessageBoardPage extends StatelessWidget {
-  const MessageBoardPage({super.key});
+class MessageBoardScreen extends StatelessWidget {
+  const MessageBoardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
