@@ -123,6 +123,44 @@ class MainPage extends StatelessWidget {
           ],
         ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // left button
+          Positioned(
+            left: 20,
+            bottom: 20,
+            child: FloatingActionButton(
+              onPressed: () {}, // todo
+              child: Icon(Icons.how_to_vote),
+            ),
+          ),
+
+          // center button
+          Positioned(
+            bottom: 20,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: FloatingActionButton(
+                onPressed: () {}, // todo
+                child: Icon(Icons.add),
+              ),
+            ),
+          ),
+
+          // right button
+          Positioned(
+            right: 20,
+            bottom: 20,
+            child: FloatingActionButton(
+              onPressed: () {}, // todo
+              child: Icon(Icons.message),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
