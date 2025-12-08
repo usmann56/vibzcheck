@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../utils/spotify.dart';
+import '../../utils/deezer.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -54,30 +55,31 @@ class _SearchScreenState extends State<SearchScreen> {
   void addToPlaylist() async {
     if (_selectedTrack == null) return;
 
-    final playlistRef = FirebaseFirestore.instance
-        .collection('playlists')
-        .doc('defaultPlaylist');
+    final trackName = _selectedTrack["name"];
+    final artist = _selectedTrack["artists"][0]["name"];
+    final albumArt = _selectedTrack["album"]["images"][0]["url"];
+
+    // Fetch preview from deezer since spotify doesnt provide it easily
+    final previewUrl = await fetchDeezerPreviewUrl(trackName, artist);
 
     final songData = {
-      "id": _selectedTrack["id"],
-      "name": _selectedTrack["name"],
-      "artist": _selectedTrack["artists"][0]["name"],
-      "albumArt": _selectedTrack["album"]["images"].isNotEmpty
-          ? _selectedTrack["album"]["images"][0]["url"]
-          : null,
-      "previewUrl": _selectedTrack["preview_url"], // optional
+      "title": trackName,
+      "artist": artist,
+      "albumArt": albumArt,
+      "spotifyId": _selectedTrack["id"],
+      "previewUrl": previewUrl, // <-- new
     };
 
-    // Add song to the shared playlist
-    await playlistRef.set({
-      "songs": FieldValue.arrayUnion([songData]),
-    }, SetOptions(merge: true));
+    await FirebaseFirestore.instance
+        .collection('playlists')
+        .doc('defaultPlaylist')
+        .update({
+          "songs": FieldValue.arrayUnion([songData]),
+        });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Added: ${songData['name']} – ${songData['artist']}"),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text("Added: $trackName – $artist")));
 
     Navigator.pop(context);
   }
