@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vibzcheck/message_board_page.dart';
 import 'voting_page.dart';
 import 'screens/search_screen.dart';
 
@@ -133,7 +134,11 @@ class MainPage extends StatelessWidget {
             left: 20,
             bottom: 20,
             child: FloatingActionButton(
-              onPressed: () {}, // todo
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const VotingPage()),
+                );
+              },
               child: Icon(Icons.how_to_vote),
             ),
           ),
@@ -162,7 +167,13 @@ class MainPage extends StatelessWidget {
             right: 20,
             bottom: 20,
             child: FloatingActionButton(
-              onPressed: () {}, // todo
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const MessageBoardPage(),
+                  ),
+                );
+              },
               child: Icon(Icons.message),
             ),
           ),
