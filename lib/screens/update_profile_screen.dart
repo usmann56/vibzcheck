@@ -150,8 +150,8 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                       labelText: 'New Password',
                     ),
                     obscureText: true,
-                    validator: (val) => val == null || val.length < 6
-                        ? 'Password must be at least 6 characters'
+                    validator: (val) => val == null || val.length < 8
+                        ? 'Password must be at least 8 characters'
                         : null,
                   ),
                   const SizedBox(height: 12),
