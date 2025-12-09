@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'voting_screen.dart';
 import 'search_screen.dart';
 import 'message_board_screen.dart';
+import '../utils/deezer.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -47,6 +48,31 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  Future<String?> refreshPreviewUrl(Map<String, dynamic> song) async {
+    final deezerId = song["deezerId"];
+    if (deezerId == null) return null;
+
+    final newUrl = await fetchNewPreviewUrl(deezerId);
+
+    if (newUrl != null) {
+      // update Firestore
+      final playlistRef = FirebaseFirestore.instance
+          .collection("playlists")
+          .doc("defaultPlaylist");
+
+      final songs = List<Map<String, dynamic>>.from(defaultPlaylist);
+      final index = songs.indexWhere((s) => s["id"] == song["id"]);
+      if (index != -1) {
+        songs[index]["previewUrl"] = newUrl;
+      }
+
+      await playlistRef.update({"songs": songs});
+      return newUrl;
+    }
+
+    return null;
+  }
+
   void listenDefaultPlaylist() {
     FirebaseFirestore.instance
         .collection('playlists')
@@ -75,15 +101,26 @@ class _HomePageState extends State<HomePage> {
   }
 
   void playSong(Map<String, dynamic> song) async {
-    final url = song["previewUrl"];
+    String? url = song["previewUrl"];
+
     if (url == null) return;
+
+    // check exp
+    if (isDeezerUrlExpired(url)) {
+      print("Preview expired — fetching new link...");
+      url = await refreshPreviewUrl(song);
+
+      if (url == null) {
+        print("Could not refresh preview URL");
+        return;
+      }
+    }
 
     setState(() {
       currentSong = song;
     });
 
     await audioPlayer.stop();
-
     await audioPlayer.play(UrlSource(url), mode: PlayerMode.mediaPlayer);
   }
 

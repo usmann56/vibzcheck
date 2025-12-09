@@ -60,14 +60,18 @@ class _SearchScreenState extends State<SearchScreen> {
     final albumArt = _selectedTrack["album"]["images"][0]["url"];
 
     // Fetch preview from deezer since spotify doesnt provide it easily
-    final previewUrl = await fetchDeezerPreviewUrl(trackName, artist);
+    final deezerData = await fetchDeezerPreviewUrl(trackName, artist);
+
+    final previewUrl = deezerData["previewUrl"];
+    final deezerId = deezerData["deezerId"];
 
     final songData = {
       "title": trackName,
       "artist": artist,
       "albumArt": albumArt,
       "spotifyId": _selectedTrack["id"],
-      "previewUrl": previewUrl, // <-- new
+      "previewUrl": previewUrl, // may be null, but usually valid
+      "deezerId": deezerId, // <-- NEW: REQUIRED
     };
 
     await FirebaseFirestore.instance
