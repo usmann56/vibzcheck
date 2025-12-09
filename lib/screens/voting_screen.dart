@@ -49,44 +49,64 @@ class _VotingScreenState extends State<VotingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     return Scaffold(
       appBar: AppBar(title: const Text('Voting')),
-      body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance
-            .collection('playlists')
-            .doc('defaultPlaylist')
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final data = snapshot.data!.data() ?? {};
-          final list = (data['voting'] as List?) ?? [];
-          votingSongs = list.cast<Map<String, dynamic>>();
-          voteEndAt = data['voteEndAt'] as Timestamp?;
-          voteUserVotes =
-              (data['voteUserVotes'] as Map<String, dynamic>?) ?? {};
+      body: uid == null
+          ? _buildPlaylistStream('defaultPlaylist')
+          : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(uid)
+                  .snapshots(),
+              builder: (context, userSnap) {
+                if (!userSnap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final pid =
+                    userSnap.data!.data()?['currentPlaylistId'] as String?;
+                final target = pid ?? 'defaultPlaylist';
+                return _buildPlaylistStream(target);
+              },
+            ),
+    );
+  }
 
-          // Derive counts and current user's vote
-          upvotes = voteUserVotes.values.where((v) => v == 'up').length;
-          downvotes = voteUserVotes.values.where((v) => v == 'down').length;
-          final uid = FirebaseAuth.instance.currentUser?.uid;
-          userVote = uid != null ? (voteUserVotes[uid] as String?) : null;
+  Widget _buildPlaylistStream(String playlistId) {
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('playlists')
+          .doc(playlistId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final data = snapshot.data!.data() ?? {};
+        final list = (data['voting'] as List?) ?? [];
+        votingSongs = list.cast<Map<String, dynamic>>();
+        voteEndAt = data['voteEndAt'] as Timestamp?;
+        voteUserVotes = (data['voteUserVotes'] as Map<String, dynamic>?) ?? {};
 
-          _ensureVoteEndTime(data);
+        // Derive counts and current user's vote
+        upvotes = voteUserVotes.values.where((v) => v == 'up').length;
+        downvotes = voteUserVotes.values.where((v) => v == 'down').length;
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        userVote = uid != null ? (voteUserVotes[uid] as String?) : null;
 
-          // If expired and not yet submitted, submit outcome
-          if (_isExpired() && !_submittedOnExpire && votingSongs.isNotEmpty) {
-            _submittedOnExpire = true;
-            // Defer to next frame to avoid setState during build
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _submitVoteOutcome();
-            });
-          }
+        _ensureVoteEndTime(data);
 
-          return _buildBody(context);
-        },
-      ),
+        // If expired and not yet submitted, submit outcome
+        if (_isExpired() && !_submittedOnExpire && votingSongs.isNotEmpty) {
+          _submittedOnExpire = true;
+          // Defer to next frame to avoid setState during build
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _submitVoteOutcome();
+          });
+        }
+
+        return _buildBody(context);
+      },
     );
   }
 
@@ -258,9 +278,20 @@ class _VotingScreenState extends State<VotingScreen> {
 
     // If no voteEndAt, or active song changed, set end to now + 30s
     if (voteEndAt == null || currentId != activeId) {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      String targetId = 'defaultPlaylist';
+      if (uid != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .get();
+        targetId =
+            (userDoc.data()?['currentPlaylistId'] as String?) ??
+            'defaultPlaylist';
+      }
       final ref = FirebaseFirestore.instance
           .collection('playlists')
-          .doc('defaultPlaylist');
+          .doc(targetId);
       await ref.update({
         'activeVoteId': activeId,
         'voteEndAt': Timestamp.fromDate(
@@ -289,9 +320,20 @@ class _VotingScreenState extends State<VotingScreen> {
   Future<void> _submitVoteOutcome() async {
     if (votingSongs.isEmpty) return;
     final active = votingSongs.first;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    String targetId = 'defaultPlaylist';
+    if (uid != null) {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      targetId =
+          (userDoc.data()?['currentPlaylistId'] as String?) ??
+          'defaultPlaylist';
+    }
     final ref = FirebaseFirestore.instance
         .collection('playlists')
-        .doc('defaultPlaylist');
+        .doc(targetId);
 
     if ((upvotes) > (downvotes)) {
       // Move to songs and remove from voting
@@ -322,9 +364,15 @@ class _VotingScreenState extends State<VotingScreen> {
   Future<void> _setUserVote(String vote) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+    final targetId =
+        (userDoc.data()?['currentPlaylistId'] as String?) ?? 'defaultPlaylist';
     final ref = FirebaseFirestore.instance
         .collection('playlists')
-        .doc('defaultPlaylist');
+        .doc(targetId);
     // Update per-user vote in Firestore to persist across navigation
     await ref.set({
       'voteUserVotes': {uid: vote},

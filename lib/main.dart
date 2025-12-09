@@ -4,7 +4,6 @@ import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/homepage_screen.dart';
-import 'screens/message_board_screen.dart';
 import 'screens/voting_screen.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -106,10 +105,6 @@ class MyApp extends StatelessWidget {
         '/register': (context) => const RegisterScreen(),
         '/main': (context) => const HomePage(),
         '/voting': (context) => const VotingScreen(),
-        '/messageboard': (context) => const MessageBoardScreen(
-          playlistId: 'defaultPlaylist',
-          username: 'Unknown',
-        ),
       },
     );
   }

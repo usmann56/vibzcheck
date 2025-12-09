@@ -20,6 +20,10 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
 
   bool _isUpdatingUsername = false;
   bool _isUpdatingPassword = false;
+  // Playlist controls
+  final TextEditingController _newPlaylistController = TextEditingController();
+  String? _selectedPlaylistId;
+  bool _isUpdatingPlaylist = false;
 
   @override
   void initState() {
@@ -32,6 +36,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     _usernameController.dispose();
     _oldPasswordController.dispose();
     _newPasswordController.dispose();
+    _newPlaylistController.dispose();
     super.dispose();
   }
 
@@ -164,9 +169,140 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                 ],
               ),
             ),
+
+            const Divider(height: 40),
+
+            // manage playlist (create/change) — placed under Update Password
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Playlist',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                // Existing playlists dropdown
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('playlists')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const LinearProgressIndicator();
+                    }
+                    final docs = snapshot.data!.docs;
+                    final items = docs
+                        .map(
+                          (d) => DropdownMenuItem<String>(
+                            value: d.id,
+                            child: Text(d.id),
+                          ),
+                        )
+                        .toList();
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedPlaylistId,
+                            items: items,
+                            hint: const Text('Select existing playlist'),
+                            onChanged: (val) => setState(() {
+                              _selectedPlaylistId = val;
+                            }),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed:
+                              (_selectedPlaylistId == null ||
+                                  _isUpdatingPlaylist)
+                              ? null
+                              : () async {
+                                  await _setUserPlaylist(_selectedPlaylistId!);
+                                },
+                          child: _isUpdatingPlaylist
+                              ? const SizedBox(
+                                  height: 16,
+                                  width: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Change'),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                // Create new playlist
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _newPlaylistController,
+                        decoration: const InputDecoration(
+                          labelText: 'New playlist name',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _isUpdatingPlaylist
+                          ? null
+                          : () async {
+                              final name = _newPlaylistController.text.trim();
+                              if (name.isEmpty) return;
+                              await _createPlaylistIfMissing(name);
+                              await _setUserPlaylist(name);
+                              _newPlaylistController.clear();
+                            },
+                      child: _isUpdatingPlaylist
+                          ? const SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Create & Use'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _createPlaylistIfMissing(String id) async {
+    final ref = FirebaseFirestore.instance.collection('playlists').doc(id);
+    final snap = await ref.get();
+    if (!snap.exists) {
+      await ref.set({
+        'songs': [],
+        'voting': [],
+        // messages is a subcollection; no need to pre-create documents
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  Future<void> _setUserPlaylist(String id) async {
+    setState(() => _isUpdatingPlaylist = true);
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      'currentPlaylistId': id,
+    }, SetOptions(merge: true));
+    setState(() => _isUpdatingPlaylist = false);
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Playlist set to "$id"')));
+    }
   }
 }

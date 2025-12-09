@@ -7,6 +7,7 @@ import 'search_screen.dart';
 import 'message_board_screen.dart';
 import '../utils/deezer.dart';
 import '../screens/update_profile_screen.dart';
+import 'dart:async';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,6 +18,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> defaultPlaylist = [];
+  String? currentPlaylistId;
   Map<String, dynamic>? currentSong;
   bool isPlaying = false;
 
@@ -26,11 +28,12 @@ class _HomePageState extends State<HomePage> {
 
   String? username;
   bool isLoadingUser = true;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _playlistSub;
 
   @override
   void initState() {
     super.initState();
-    listenDefaultPlaylist();
+    _listenUserPlaylist();
 
     audioPlayer.onDurationChanged.listen((d) {
       setState(() => songDuration = d);
@@ -52,6 +55,8 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     // _audioPlayer.dispose();
+    _playlistSub?.cancel();
+    // audioPlayer.dispose(); // keep if you fully close widget lifecycle
     super.dispose();
   }
 
@@ -62,49 +67,101 @@ class _HomePageState extends State<HomePage> {
     final newUrl = await fetchNewPreviewUrl(deezerId);
 
     if (newUrl != null) {
-      // update Firestore
+      // Transactional update to avoid cross-playlist overwrites
+      final targetId = currentPlaylistId ?? 'defaultPlaylist';
       final playlistRef = FirebaseFirestore.instance
           .collection("playlists")
-          .doc("defaultPlaylist");
+          .doc(targetId);
 
-      final songs = List<Map<String, dynamic>>.from(defaultPlaylist);
-      final index = songs.indexWhere((s) => s["id"] == song["id"]);
-      if (index != -1) {
-        songs[index]["previewUrl"] = newUrl;
-      }
-
-      await playlistRef.update({"songs": songs});
+      await FirebaseFirestore.instance.runTransaction((tx) async {
+        final snap = await tx.get(playlistRef);
+        if (!snap.exists) return;
+        final data = snap.data() ?? {};
+        final songs = List<Map<String, dynamic>>.from(data['songs'] ?? []);
+        final idx = songs.indexWhere(
+          (s) => s['spotifyId'] == song['spotifyId'],
+        );
+        if (idx == -1) return;
+        songs[idx]['previewUrl'] = newUrl;
+        tx.update(playlistRef, {'songs': songs});
+      });
       return newUrl;
     }
 
     return null;
   }
 
-  void listenDefaultPlaylist() {
-    FirebaseFirestore.instance
-        .collection('playlists')
-        .doc('defaultPlaylist')
-        .snapshots()
-        .listen((doc) {
-          if (doc.exists) {
-            final songs = List<Map<String, dynamic>>.from(doc['songs'] ?? []);
-            setState(() {
-              defaultPlaylist = songs;
-
-              // If no song is playing yet, start the first song
+  void _listenUserPlaylist() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    FirebaseFirestore.instance.collection('users').doc(uid).snapshots().listen((
+      userDoc,
+    ) {
+      final pid = userDoc.data()?['currentPlaylistId'] as String?;
+      debugPrint('[HomePage] user currentPlaylistId: $pid');
+      if (pid == null || pid.isEmpty) return;
+      if (currentPlaylistId != pid) {
+        currentPlaylistId = pid;
+        debugPrint('[HomePage] Switching playlist to: $currentPlaylistId');
+        // Swap listeners and stop any current playback from previous playlist
+        _playlistSub?.cancel();
+        audioPlayer.stop();
+        setState(() {
+          currentSong = null;
+          defaultPlaylist = [];
+        });
+        _playlistSub = FirebaseFirestore.instance
+            .collection('playlists')
+            .doc(pid)
+            .snapshots()
+            .listen((doc) async {
+              if (!doc.exists) return;
+              final songs = List<Map<String, dynamic>>.from(doc['songs'] ?? []);
+              debugPrint('[HomePage] Received ${songs.length} songs for $pid');
+              setState(() {
+                defaultPlaylist = songs;
+              });
+              // If nothing playing, auto-start first track of the current playlist (if any)
               if (currentSong == null && songs.isNotEmpty) {
-                currentSong = songs[0];
-                playSong(currentSong!);
+                playSong(songs[0]);
+                return;
               }
-
-              // Ensure current song is still in the playlist
+              // If the currentSong is no longer in this playlist, switch to first or stop
               if (currentSong != null &&
-                  !songs.any((song) => song['id'] == currentSong!['id'])) {
-                currentSong = songs.isNotEmpty ? songs[0] : null;
+                  !songs.any(
+                    (s) => s['spotifyId'] == currentSong!['spotifyId'],
+                  )) {
+                if (songs.isNotEmpty) {
+                  playSong(songs[0]);
+                } else {
+                  await audioPlayer.stop();
+                  setState(() {
+                    currentSong = null;
+                  });
+                }
               }
             });
-          }
-        });
+      } else if (_playlistSub == null) {
+        // Ensure we have an active listener for the current playlist
+        _playlistSub = FirebaseFirestore.instance
+            .collection('playlists')
+            .doc(pid)
+            .snapshots()
+            .listen((doc) async {
+              if (!doc.exists) return;
+              final songs = List<Map<String, dynamic>>.from(doc['songs'] ?? []);
+              debugPrint(
+                '[HomePage] Listener attached; ${songs.length} songs for $pid',
+              );
+              setState(() {
+                defaultPlaylist = songs;
+              });
+              if (currentSong == null && songs.isNotEmpty) {
+                playSong(songs[0]);
+              }
+            });
+      }
+    });
   }
 
   void playSong(Map<String, dynamic> song) async {
@@ -265,7 +322,7 @@ class _HomePageState extends State<HomePage> {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => MessageBoardScreen(
-                    playlistId: 'defaultPlaylist', // TODO: make dynamic later
+                    playlistId: currentPlaylistId ?? 'defaultPlaylist',
                     username: username ?? 'Unknown',
                     // currentSong: currentSong,
                   ),
@@ -352,6 +409,7 @@ class _HomePageState extends State<HomePage> {
                               fit: BoxFit.cover,
                             ),
                           ),
+                          // removed playlist label from active song area
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -428,6 +486,7 @@ class _HomePageState extends State<HomePage> {
             left: 20,
             bottom: 20,
             child: FloatingActionButton(
+              heroTag: 'voteFab',
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (context) => const VotingScreen()),
@@ -442,6 +501,7 @@ class _HomePageState extends State<HomePage> {
             right: 0,
             child: Center(
               child: FloatingActionButton(
+                heroTag: 'addFab',
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -457,11 +517,12 @@ class _HomePageState extends State<HomePage> {
             right: 20,
             bottom: 20,
             child: FloatingActionButton(
+              heroTag: 'msgFab',
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => MessageBoardScreen(
-                      playlistId: 'defaultPlaylist', // TODO: make dynamic later
+                      playlistId: currentPlaylistId ?? 'defaultPlaylist',
                       username: username ?? 'Unknown',
                     ),
                   ),

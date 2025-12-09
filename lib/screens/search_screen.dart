@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -74,9 +75,19 @@ class _SearchScreenState extends State<SearchScreen> {
       "deezerId": deezerId, // <-- NEW: REQUIRED
     };
 
+    // Use user's selected playlist
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+    final playlistId = userDoc.data()?['currentPlaylistId'] as String?;
+    final targetId = playlistId ?? 'defaultPlaylist';
+
     await FirebaseFirestore.instance
         .collection('playlists')
-        .doc('defaultPlaylist')
+        .doc(targetId)
         .update({
           "voting": FieldValue.arrayUnion([songData]),
         });
@@ -212,7 +223,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
               ),
               child: const Text(
-                "Add to Playlist",
+                "Add to Voting",
                 style: TextStyle(fontSize: 18),
               ),
             ),
