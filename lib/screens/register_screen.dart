@@ -10,6 +10,7 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController usernameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   String errorMessage = '';
@@ -28,8 +29,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> register() async {
-    final password = passwordController.text.trim();
+    final username = usernameController.text.trim();
     final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    if (username.isEmpty) {
+      setState(() {
+        errorMessage = 'Please enter a username.';
+      });
+      return;
+    }
+
     final validationError = validatePassword(password);
     if (validationError != null) {
       setState(() {
@@ -43,10 +53,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
-          .set({
-            'email': email,
-            // Add phone number field if needed
-          });
+          .set({'username': username, 'email': email});
       if (mounted) {
         await showDialog(
           context: context,
@@ -87,6 +94,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            TextField(
+              controller: usernameController,
+              decoration: const InputDecoration(labelText: 'Username'),
+            ),
             TextField(
               controller: emailController,
               decoration: const InputDecoration(labelText: 'Email or Phone'),
