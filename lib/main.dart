@@ -106,7 +106,10 @@ class MyApp extends StatelessWidget {
         '/register': (context) => const RegisterScreen(),
         '/main': (context) => const HomePage(),
         '/voting': (context) => const VotingScreen(),
-        '/messageboard': (context) => const MessageBoardScreen(),
+        '/messageboard': (context) => const MessageBoardScreen(
+          playlistId: 'defaultPlaylist',
+          username: 'Unknown',
+        ),
       },
     );
   }
