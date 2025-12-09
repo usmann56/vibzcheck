@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'voting_screen.dart';
@@ -22,6 +23,9 @@ class _HomePageState extends State<HomePage> {
   Duration currentPosition = Duration.zero;
   Duration songDuration = Duration.zero;
 
+  String? username;
+  bool isLoadingUser = true;
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +44,8 @@ class _HomePageState extends State<HomePage> {
         isPlaying = state == PlayerState.playing;
       });
     });
+
+    loadUserData();
   }
 
   @override
@@ -146,6 +152,22 @@ class _HomePageState extends State<HomePage> {
     return '$minutes:$secondsStr';
   }
 
+  Future<void> loadUserData() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+
+    if (doc.exists) {
+      setState(() {
+        username = doc['username'];
+        isLoadingUser = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
@@ -177,7 +199,15 @@ class _HomePageState extends State<HomePage> {
                 ),
               );
             } else if (details.primaryVelocity! < -200) {
-              Navigator.of(context).pushNamed('/messageboard');
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => MessageBoardScreen(
+                    playlistId: 'defaultPlaylist', // TODO: make dynamic later
+                    username: username ?? 'Unknown',
+                    // currentSong: currentSong,
+                  ),
+                ),
+              );
             }
           }
         },
@@ -367,7 +397,10 @@ class _HomePageState extends State<HomePage> {
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => const MessageBoardScreen(),
+                    builder: (context) => MessageBoardScreen(
+                      playlistId: 'defaultPlaylist', // TODO: make dynamic later
+                      username: username ?? 'Unknown',
+                    ),
                   ),
                 );
               },
