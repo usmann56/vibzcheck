@@ -74,7 +74,7 @@ class _SearchScreenState extends State<SearchScreen> {
         .collection('playlists')
         .doc('defaultPlaylist')
         .update({
-          "songs": FieldValue.arrayUnion([songData]),
+          "voting": FieldValue.arrayUnion([songData]),
         });
 
     ScaffoldMessenger.of(
