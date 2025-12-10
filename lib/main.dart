@@ -91,11 +91,34 @@ class MyApp extends StatelessWidget {
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF3F4E4F),
-            foregroundColor: const Color(0xFFA27B5C),
+            foregroundColor: const Color(0xFFDCD7C9),
             textStyle: const TextStyle(
               fontFamily: 'Raleway',
-              color: Color(0xFFA27B5C),
+              color: Color(0xFFDCD7C9),
+              fontWeight: FontWeight.bold,
             ),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: const Color(0xFFDCD7C9),
+          ),
+        ),
+        inputDecorationTheme: const InputDecorationTheme(
+          labelStyle: TextStyle(color: Colors.grey),
+          floatingLabelStyle: TextStyle(
+            color: Color(0xFFDCD7C9),
+            fontWeight: FontWeight.bold,
+          ),
+          hintStyle: TextStyle(color: Colors.grey),
+          focusedBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Color(0xFFDCD7C9), width: 2),
+          ),
+          enabledBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.grey),
+          ),
+          focusedErrorBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.red, width: 2),
           ),
         ),
       ),
