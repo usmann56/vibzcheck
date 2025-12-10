@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../services/database_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'voting_screen.dart';
 import 'search_screen.dart';
@@ -70,22 +71,7 @@ class _HomePageState extends State<HomePage> {
     if (newUrl != null) {
       // Transactional update to avoid cross-playlist overwrites
       final targetId = currentPlaylistId ?? 'defaultPlaylist';
-      final playlistRef = FirebaseFirestore.instance
-          .collection("playlists")
-          .doc(targetId);
-
-      await FirebaseFirestore.instance.runTransaction((tx) async {
-        final snap = await tx.get(playlistRef);
-        if (!snap.exists) return;
-        final data = snap.data() ?? {};
-        final songs = List<Map<String, dynamic>>.from(data['songs'] ?? []);
-        final idx = songs.indexWhere(
-          (s) => s['spotifyId'] == song['spotifyId'],
-        );
-        if (idx == -1) return;
-        songs[idx]['previewUrl'] = newUrl;
-        tx.update(playlistRef, {'songs': songs});
-      });
+      await DatabaseService().updateSongPreviewUrl(targetId, song['spotifyId'], newUrl);
       return newUrl;
     }
 
@@ -95,7 +81,7 @@ class _HomePageState extends State<HomePage> {
   void _listenUserPlaylist() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    FirebaseFirestore.instance.collection('users').doc(uid).snapshots().listen((
+    DatabaseService().getUserStream(uid).listen((
       userDoc,
     ) {
       final pid = userDoc.data()?['currentPlaylistId'] as String?;
@@ -111,10 +97,8 @@ class _HomePageState extends State<HomePage> {
           currentSong = null;
           defaultPlaylist = [];
         });
-        _playlistSub = FirebaseFirestore.instance
-            .collection('playlists')
-            .doc(pid)
-            .snapshots()
+        _playlistSub = DatabaseService()
+            .getPlaylistStream(pid)
             .listen((doc) async {
               if (!doc.exists) return;
               final songs = List<Map<String, dynamic>>.from(doc['songs'] ?? []);
@@ -144,10 +128,8 @@ class _HomePageState extends State<HomePage> {
             });
       } else if (_playlistSub == null) {
         // Ensure we have an active listener for the current playlist
-        _playlistSub = FirebaseFirestore.instance
-            .collection('playlists')
-            .doc(pid)
-            .snapshots()
+        _playlistSub = DatabaseService()
+            .getPlaylistStream(pid)
             .listen((doc) async {
               if (!doc.exists) return;
               final songs = List<Map<String, dynamic>>.from(doc['songs'] ?? []);
@@ -249,10 +231,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> loadUserData() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
+    final doc = await DatabaseService().getUser(uid);
 
     if (doc.exists) {
       setState(() {

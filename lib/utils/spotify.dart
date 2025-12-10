@@ -1,14 +1,11 @@
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
+import '../services/database_service.dart';
 
 Future<String?> fetchSpotifyAccessToken() async {
   // func to get spotify access token
   try {
-    final doc = await FirebaseFirestore.instance
-        .collection('spotify')
-        .doc('env')
-        .get();
+    final doc = await DatabaseService().getSpotifyToken();
 
     if (!doc.exists) {
       print("No token document found in Firestore.");
