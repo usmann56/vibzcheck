@@ -21,6 +21,7 @@ class _HomePageState extends State<HomePage> {
   String? currentPlaylistId;
   Map<String, dynamic>? currentSong;
   bool isPlaying = false;
+  String? selectedGenre; // State for selected filter
 
   AudioPlayer audioPlayer = AudioPlayer();
   Duration currentPosition = Duration.zero;
@@ -210,6 +211,17 @@ class _HomePageState extends State<HomePage> {
     return '$minutes:$secondsStr';
   }
 
+  List<String> get availableGenres {
+    final genres = <String>{};
+    for (var song in defaultPlaylist) {
+      if (song['genre'] != null) {
+        genres.add(song['genre']);
+      }
+    }
+    final sortedGenres = genres.toList()..sort();
+    return ["All", ...sortedGenres];
+  }
+
   Future<void> loadUserData() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
@@ -335,6 +347,37 @@ class _HomePageState extends State<HomePage> {
           children: [
             SizedBox(height: screenHeight * 0.03),
 
+            // genre filter chips
+            Container(
+              height: 50,
+              width: screenWidth * 0.9,
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: availableGenres.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final genre = availableGenres[index];
+                  final isSelected =
+                      (selectedGenre == null && genre == "All") ||
+                      selectedGenre == genre;
+                  return ChoiceChip(
+                    label: Text(genre),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      setState(() {
+                        if (genre == "All") {
+                          selectedGenre = null;
+                        } else {
+                          selectedGenre = selected ? genre : null;
+                        }
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+
             Container(
               height: screenHeight * 0.4,
               width: screenWidth * 0.9,
@@ -344,9 +387,18 @@ class _HomePageState extends State<HomePage> {
               ),
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: defaultPlaylist.length,
+                itemCount: defaultPlaylist.where((song) {
+                  if (selectedGenre == null) return true;
+                  return song['genre'] == selectedGenre;
+                }).length,
                 itemBuilder: (context, index) {
-                  final song = defaultPlaylist[index];
+                  // filter playlist based on selection
+                  final filteredPlaylist = defaultPlaylist.where((song) {
+                    if (selectedGenre == null) return true;
+                    return song['genre'] == selectedGenre;
+                  }).toList();
+
+                  final song = filteredPlaylist[index];
 
                   return GestureDetector(
                     onTap: () => playSong(song),
