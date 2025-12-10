@@ -189,19 +189,43 @@ class _HomePageState extends State<HomePage> {
     await audioPlayer.play(UrlSource(url), mode: PlayerMode.mediaPlayer);
   }
 
+  // play song from filtered playlist
+  List<Map<String, dynamic>> get currentPlaylist {
+    if (selectedGenre == null) return defaultPlaylist;
+    return defaultPlaylist
+        .where((song) => song['genre'] == selectedGenre)
+        .toList();
+  }
+
   void playNextSong() {
-    if (currentSong == null || defaultPlaylist.isEmpty) return;
-    final currentIndex = defaultPlaylist.indexOf(currentSong!);
-    final nextIndex = (currentIndex + 1) % defaultPlaylist.length;
-    playSong(defaultPlaylist[nextIndex]);
+    final playlist = currentPlaylist;
+    if (currentSong == null || playlist.isEmpty) return;
+    
+    final currentIndex = playlist.indexWhere((s) => s['spotifyId'] == currentSong!['spotifyId']);
+    
+    if (currentIndex == -1) {
+       if (playlist.isNotEmpty) playSong(playlist[0]);
+       return;
+    }
+
+    final nextIndex = (currentIndex + 1) % playlist.length;
+    playSong(playlist[nextIndex]);
   }
 
   void playPreviousSong() {
-    if (currentSong == null || defaultPlaylist.isEmpty) return;
-    final currentIndex = defaultPlaylist.indexOf(currentSong!);
+    final playlist = currentPlaylist;
+    if (currentSong == null || playlist.isEmpty) return;
+
+    final currentIndex = playlist.indexWhere((s) => s['spotifyId'] == currentSong!['spotifyId']);
+
+    if (currentIndex == -1) {
+       if (playlist.isNotEmpty) playSong(playlist[0]);
+       return;
+    }
+
     final prevIndex =
-        (currentIndex - 1 + defaultPlaylist.length) % defaultPlaylist.length;
-    playSong(defaultPlaylist[prevIndex]);
+        (currentIndex - 1 + playlist.length) % playlist.length;
+    playSong(playlist[prevIndex]);
   }
 
   String _formatDuration(Duration duration) {
