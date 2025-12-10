@@ -66,13 +66,18 @@ class _SearchScreenState extends State<SearchScreen> {
     final previewUrl = deezerData["previewUrl"];
     final deezerId = deezerData["deezerId"];
 
+    // Fetch genre from Spotify Artist API since track api doesnt have that
+    final artistId = _selectedTrack["artists"][0]["id"];
+    final genre = await fetchArtistGenre(artistId);
+
     final songData = {
       "title": trackName,
       "artist": artist,
       "albumArt": albumArt,
       "spotifyId": _selectedTrack["id"],
-      "previewUrl": previewUrl, // may be null, but usually valid
-      "deezerId": deezerId, // <-- NEW: REQUIRED
+      "previewUrl": previewUrl,
+      "deezerId": deezerId,
+      "genre": genre,
     };
 
     // Use user's selected playlist

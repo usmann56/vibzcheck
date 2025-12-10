@@ -21,6 +21,7 @@ class _HomePageState extends State<HomePage> {
   String? currentPlaylistId;
   Map<String, dynamic>? currentSong;
   bool isPlaying = false;
+  String? selectedGenre; // State for selected filter
 
   AudioPlayer audioPlayer = AudioPlayer();
   Duration currentPosition = Duration.zero;
@@ -188,19 +189,43 @@ class _HomePageState extends State<HomePage> {
     await audioPlayer.play(UrlSource(url), mode: PlayerMode.mediaPlayer);
   }
 
+  // play song from filtered playlist
+  List<Map<String, dynamic>> get currentPlaylist {
+    if (selectedGenre == null) return defaultPlaylist;
+    return defaultPlaylist
+        .where((song) => song['genre'] == selectedGenre)
+        .toList();
+  }
+
   void playNextSong() {
-    if (currentSong == null || defaultPlaylist.isEmpty) return;
-    final currentIndex = defaultPlaylist.indexOf(currentSong!);
-    final nextIndex = (currentIndex + 1) % defaultPlaylist.length;
-    playSong(defaultPlaylist[nextIndex]);
+    final playlist = currentPlaylist;
+    if (currentSong == null || playlist.isEmpty) return;
+    
+    final currentIndex = playlist.indexWhere((s) => s['spotifyId'] == currentSong!['spotifyId']);
+    
+    if (currentIndex == -1) {
+       if (playlist.isNotEmpty) playSong(playlist[0]);
+       return;
+    }
+
+    final nextIndex = (currentIndex + 1) % playlist.length;
+    playSong(playlist[nextIndex]);
   }
 
   void playPreviousSong() {
-    if (currentSong == null || defaultPlaylist.isEmpty) return;
-    final currentIndex = defaultPlaylist.indexOf(currentSong!);
+    final playlist = currentPlaylist;
+    if (currentSong == null || playlist.isEmpty) return;
+
+    final currentIndex = playlist.indexWhere((s) => s['spotifyId'] == currentSong!['spotifyId']);
+
+    if (currentIndex == -1) {
+       if (playlist.isNotEmpty) playSong(playlist[0]);
+       return;
+    }
+
     final prevIndex =
-        (currentIndex - 1 + defaultPlaylist.length) % defaultPlaylist.length;
-    playSong(defaultPlaylist[prevIndex]);
+        (currentIndex - 1 + playlist.length) % playlist.length;
+    playSong(playlist[prevIndex]);
   }
 
   String _formatDuration(Duration duration) {
@@ -208,6 +233,17 @@ class _HomePageState extends State<HomePage> {
     final seconds = duration.inSeconds % 60;
     final secondsStr = seconds.toString().padLeft(2, '0');
     return '$minutes:$secondsStr';
+  }
+
+  List<String> get availableGenres {
+    final genres = <String>{};
+    for (var song in defaultPlaylist) {
+      if (song['genre'] != null) {
+        genres.add(song['genre']);
+      }
+    }
+    final sortedGenres = genres.toList()..sort();
+    return ["All", ...sortedGenres];
   }
 
   Future<void> loadUserData() async {
@@ -335,6 +371,37 @@ class _HomePageState extends State<HomePage> {
           children: [
             SizedBox(height: screenHeight * 0.03),
 
+            // genre filter chips
+            Container(
+              height: 50,
+              width: screenWidth * 0.9,
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: availableGenres.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final genre = availableGenres[index];
+                  final isSelected =
+                      (selectedGenre == null && genre == "All") ||
+                      selectedGenre == genre;
+                  return ChoiceChip(
+                    label: Text(genre),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      setState(() {
+                        if (genre == "All") {
+                          selectedGenre = null;
+                        } else {
+                          selectedGenre = selected ? genre : null;
+                        }
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+
             Container(
               height: screenHeight * 0.4,
               width: screenWidth * 0.9,
@@ -344,9 +411,18 @@ class _HomePageState extends State<HomePage> {
               ),
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: defaultPlaylist.length,
+                itemCount: defaultPlaylist.where((song) {
+                  if (selectedGenre == null) return true;
+                  return song['genre'] == selectedGenre;
+                }).length,
                 itemBuilder: (context, index) {
-                  final song = defaultPlaylist[index];
+                  // filter playlist based on selection
+                  final filteredPlaylist = defaultPlaylist.where((song) {
+                    if (selectedGenre == null) return true;
+                    return song['genre'] == selectedGenre;
+                  }).toList();
+
+                  final song = filteredPlaylist[index];
 
                   return GestureDetector(
                     onTap: () => playSong(song),

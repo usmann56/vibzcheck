@@ -39,3 +39,27 @@ Future<String?> fetchSpotifyAccessToken() async {
     return null;
   }
 }
+
+Future<String> fetchArtistGenre(String artistId) async {
+  try {
+    final String? accessToken = await fetchSpotifyAccessToken();
+    if (accessToken == null) return "Unknown";
+
+    final url = Uri.parse("https://api.spotify.com/v1/artists/$artistId");
+    final response = await http.get(
+      url,
+      headers: {"Authorization": "Bearer $accessToken"},
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final genres = List<String>.from(data['genres'] ?? []);
+      if (genres.isNotEmpty) {
+        return genres.first; // Return the first genre
+      }
+    }
+  } catch (e) {
+    print("Error fetching artist genre: $e");
+  }
+  return "Unknown";
+}
