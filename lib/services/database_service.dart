@@ -54,27 +54,44 @@ class DatabaseService {
   Stream<DocumentSnapshot<Map<String, dynamic>>> getPlaylistStream(String id) {
     return _db.collection('playlists').doc(id).snapshots();
   }
-  
+
   Stream<QuerySnapshot<Map<String, dynamic>>> getAllPlaylistsStream() {
     return _db.collection('playlists').snapshots();
   }
 
-  Future<void> addSongToVoting(String playlistId, Map<String, dynamic> songData) async {
+  Future<void> addSongToVoting(
+    String playlistId,
+    Map<String, dynamic> songData,
+  ) async {
     await _db.collection('playlists').doc(playlistId).update({
       "voting": FieldValue.arrayUnion([songData]),
     });
   }
-  
-  Future<void> updatePlaylist(String playlistId, Map<String, dynamic> data) async {
+
+  Future<void> updatePlaylist(
+    String playlistId,
+    Map<String, dynamic> data,
+  ) async {
     await _db.collection('playlists').doc(playlistId).update(data);
   }
-  
-  Future<void> setPlaylist(String playlistId, Map<String, dynamic> data, [bool merge = false]) async {
-      await _db.collection('playlists').doc(playlistId).set(data, SetOptions(merge: merge));
+
+  Future<void> setPlaylist(
+    String playlistId,
+    Map<String, dynamic> data, [
+    bool merge = false,
+  ]) async {
+    await _db
+        .collection('playlists')
+        .doc(playlistId)
+        .set(data, SetOptions(merge: merge));
   }
 
   // update song preview URL once expired
-  Future<void> updateSongPreviewUrl(String playlistId, String spotifyId, String newUrl) async {
+  Future<void> updateSongPreviewUrl(
+    String playlistId,
+    String spotifyId,
+    String newUrl,
+  ) async {
     final playlistRef = _db.collection("playlists").doc(playlistId);
 
     await _db.runTransaction((tx) async {
@@ -82,9 +99,7 @@ class DatabaseService {
       if (!snap.exists) return;
       final data = snap.data() ?? {};
       final songs = List<Map<String, dynamic>>.from(data['songs'] ?? []);
-      final idx = songs.indexWhere(
-        (s) => s['spotifyId'] == spotifyId,
-      );
+      final idx = songs.indexWhere((s) => s['spotifyId'] == spotifyId);
       if (idx == -1) return;
       songs[idx]['previewUrl'] = newUrl;
       tx.update(playlistRef, {'songs': songs});
@@ -97,25 +112,30 @@ class DatabaseService {
   }
 
   // Messaging collection
-  Stream<QuerySnapshot<Map<String, dynamic>>> getMessagesStream(String playlistId) {
+  Stream<QuerySnapshot<Map<String, dynamic>>> getMessagesStream(
+    String playlistId,
+  ) {
     return _db
         .collection('playlists')
         .doc(playlistId)
         .collection('messages')
-        .orderBy('timestamp', descending: true)
+        .orderBy('timestamp', descending: false)
         .snapshots();
   }
 
-  Future<void> sendMessage(String playlistId, String username, String text) async {
+  Future<void> sendMessage(
+    String playlistId,
+    String username,
+    String text,
+  ) async {
     await _db
         .collection('playlists')
         .doc(playlistId)
         .collection('messages')
         .add({
-      'text': text,
-      'username': username,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+          'text': text,
+          'username': username,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
   }
-
 }
