@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/database_service.dart';
 import 'dart:async';
 
 class VotingScreen extends StatefulWidget {
@@ -55,10 +56,7 @@ class _VotingScreenState extends State<VotingScreen> {
       body: uid == null
           ? _buildPlaylistStream('defaultPlaylist')
           : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(uid)
-                  .snapshots(),
+              stream: DatabaseService().getUserStream(uid),
               builder: (context, userSnap) {
                 if (!userSnap.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -74,10 +72,7 @@ class _VotingScreenState extends State<VotingScreen> {
 
   Widget _buildPlaylistStream(String playlistId) {
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('playlists')
-          .doc(playlistId)
-          .snapshots(),
+      stream: DatabaseService().getPlaylistStream(playlistId),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -281,18 +276,13 @@ class _VotingScreenState extends State<VotingScreen> {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       String targetId = 'defaultPlaylist';
       if (uid != null) {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .get();
+        final userDoc = await DatabaseService().getUser(uid);
         targetId =
             (userDoc.data()?['currentPlaylistId'] as String?) ??
             'defaultPlaylist';
       }
-      final ref = FirebaseFirestore.instance
-          .collection('playlists')
-          .doc(targetId);
-      await ref.update({
+      
+      await DatabaseService().updatePlaylist(targetId, {
         'activeVoteId': activeId,
         'voteEndAt': Timestamp.fromDate(
           DateTime.now().toUtc().add(const Duration(seconds: 30)),
@@ -317,27 +307,21 @@ class _VotingScreenState extends State<VotingScreen> {
     return 'Time left: ${secs}s';
   }
 
-  Future<void> _submitVoteOutcome() async {
+    Future<void> _submitVoteOutcome() async {
     if (votingSongs.isEmpty) return;
     final active = votingSongs.first;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     String targetId = 'defaultPlaylist';
     if (uid != null) {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
+      final userDoc = await DatabaseService().getUser(uid);
       targetId =
           (userDoc.data()?['currentPlaylistId'] as String?) ??
           'defaultPlaylist';
     }
-    final ref = FirebaseFirestore.instance
-        .collection('playlists')
-        .doc(targetId);
 
     if ((upvotes) > (downvotes)) {
       // Move to songs and remove from voting
-      await ref.update({
+      await DatabaseService().updatePlaylist(targetId, {
         'songs': FieldValue.arrayUnion([active]),
         'voting': FieldValue.arrayRemove([active]),
         'voteUserVotes': {},
@@ -346,7 +330,7 @@ class _VotingScreenState extends State<VotingScreen> {
       });
     } else {
       // Discard from voting
-      await ref.update({
+      await DatabaseService().updatePlaylist(targetId, {
         'voting': FieldValue.arrayRemove([active]),
         'voteUserVotes': {},
         'activeVoteId': null,
@@ -364,19 +348,14 @@ class _VotingScreenState extends State<VotingScreen> {
   Future<void> _setUserVote(String vote) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
+    final userDoc = await DatabaseService().getUser(uid);
     final targetId =
         (userDoc.data()?['currentPlaylistId'] as String?) ?? 'defaultPlaylist';
-    final ref = FirebaseFirestore.instance
-        .collection('playlists')
-        .doc(targetId);
+    
     // Update per-user vote in Firestore to persist across navigation
-    await ref.set({
+    await DatabaseService().setPlaylist(targetId, {
       'voteUserVotes': {uid: vote},
-    }, SetOptions(merge: true));
+    }, true);
   }
 }
 

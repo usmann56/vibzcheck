@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/database_service.dart';
 import 'package:flutter/material.dart';
 
 class MessageBoardScreen extends StatefulWidget {
@@ -22,15 +23,11 @@ class _MessageBoardScreenState extends State<MessageBoardScreen> {
   Future<void> sendMessage(String text) async {
     if (text.trim().isEmpty) return;
 
-    await FirebaseFirestore.instance
-        .collection('playlists')
-        .doc(widget.playlistId)
-        .collection('messages')
-        .add({
-          'username': widget.username,
-          'text': text.trim(),
-          'timestamp': FieldValue.serverTimestamp(),
-        });
+    await DatabaseService().sendMessage(
+      widget.playlistId,
+      widget.username,
+      text.trim(),
+    );
 
     controller.clear();
 
@@ -60,12 +57,7 @@ class _MessageBoardScreenState extends State<MessageBoardScreen> {
         children: [
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('playlists')
-                  .doc(widget.playlistId)
-                  .collection('messages')
-                  .orderBy('timestamp')
-                  .snapshots(),
+              stream: DatabaseService().getMessagesStream(widget.playlistId),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());

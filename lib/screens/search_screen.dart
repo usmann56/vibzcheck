@@ -1,5 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/database_service.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -83,19 +83,12 @@ class _SearchScreenState extends State<SearchScreen> {
     // Use user's selected playlist
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
+    
+    final userDoc = await DatabaseService().getUser(uid);
     final playlistId = userDoc.data()?['currentPlaylistId'] as String?;
     final targetId = playlistId ?? 'defaultPlaylist';
 
-    await FirebaseFirestore.instance
-        .collection('playlists')
-        .doc(targetId)
-        .update({
-          "voting": FieldValue.arrayUnion([songData]),
-        });
+    await DatabaseService().addSongToVoting(targetId, songData);
 
     ScaffoldMessenger.of(
       context,

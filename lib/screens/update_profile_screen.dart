@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/database_service.dart';
 
 class UpdateProfileScreen extends StatefulWidget {
   final String? username;
@@ -46,7 +48,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     setState(() => _isUpdatingUsername = true);
 
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    await FirebaseFirestore.instance.collection('users').doc(uid).update({
+    await DatabaseService().updateUser(uid, {
       'username': _usernameController.text.trim(),
     });
 
@@ -183,9 +185,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                 const SizedBox(height: 8),
                 // Existing playlists dropdown
                 StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('playlists')
-                      .snapshots(),
+                  stream: DatabaseService().getAllPlaylistsStream(),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
                       return const LinearProgressIndicator();
@@ -254,7 +254,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                           : () async {
                               final name = _newPlaylistController.text.trim();
                               if (name.isEmpty) return;
-                              await _createPlaylistIfMissing(name);
+                              await DatabaseService().createPlaylistIfMissing(name);
                               await _setUserPlaylist(name);
                               _newPlaylistController.clear();
                             },
@@ -279,25 +279,10 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     );
   }
 
-  Future<void> _createPlaylistIfMissing(String id) async {
-    final ref = FirebaseFirestore.instance.collection('playlists').doc(id);
-    final snap = await ref.get();
-    if (!snap.exists) {
-      await ref.set({
-        'songs': [],
-        'voting': [],
-        // messages is a subcollection; no need to pre-create documents
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    }
-  }
-
   Future<void> _setUserPlaylist(String id) async {
     setState(() => _isUpdatingPlaylist = true);
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'currentPlaylistId': id,
-    }, SetOptions(merge: true));
+    await DatabaseService().updateUserPlaylist(uid, id);
     setState(() => _isUpdatingPlaylist = false);
     if (mounted) {
       ScaffoldMessenger.of(
