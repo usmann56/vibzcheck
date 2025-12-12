@@ -15,42 +15,106 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   List<dynamic> _results = [];
   dynamic _selectedTrack;
 
   bool _isLoading = false;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _currentOffset = 0;
+  String _lastQuery = "";
+  static const int _limit = 10;
 
-  Future<void> searchSpotify(String query) async {
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoading &&
+        !_isLoadingMore &&
+        _hasMore &&
+        _lastQuery.isNotEmpty) {
+      searchSpotify(_lastQuery, offset: _currentOffset + _limit);
+    }
+  }
+
+  Future<void> searchSpotify(String query, {int offset = 0}) async {
     if (query.isEmpty) return;
-
-    setState(() {
-      _isLoading = true;
-      _selectedTrack = null;
-    });
-
-    final url = Uri.parse(
-      "https://api.spotify.com/v1/search?q=$query&type=track&limit=10",
-    );
-
-    final String? _accessToken = await fetchSpotifyAccessToken();
-    final res = await http.get(
-      url,
-      headers: {"Authorization": "Bearer $_accessToken"},
-    );
-
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
+    
+    if (offset == 0) {
+      if (_isLoading) return;
       setState(() {
-        _results = data['tracks']['items'];
+        _isLoading = true;
+        _isLoadingMore = false;
+        _results = [];
+        _selectedTrack = null;
+        _hasMore = true;
+        _currentOffset = 0;
+        _lastQuery = query;
       });
     } else {
-      print("Error: ${res.body}");
+      setState(() {
+        _isLoadingMore = true;
+      });
     }
 
-    setState(() {
-      _isLoading = false;
-    });
+    // we pass limit and offset for pagination
+    final url = Uri.parse(
+      "https://api.spotify.com/v1/search?q=$query&type=track&limit=$_limit&offset=$offset",
+    );
+
+    final String? accessToken = await fetchSpotifyAccessToken();
+    if (accessToken == null) {
+      setState(() {
+         _isLoading = false;
+         _isLoadingMore = false;
+      });
+      return;
+    }
+
+    final res = await http.get(
+      url,
+      headers: {"Authorization": "Bearer $accessToken"},
+    );
+
+    List<dynamic> newTracks = [];
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      newTracks = data['tracks']['items'] ?? [];
+    } else {
+      debugPrint("Error: ${res.body}");
+    }
+
+    if (mounted) {
+      setState(() {
+        if (offset == 0) {
+          _results = newTracks;
+          _isLoading = false;
+        } else {
+          _results.addAll(newTracks);
+          _isLoadingMore = false;
+        }
+        
+        _currentOffset = offset;
+        
+        if (newTracks.length < _limit) {
+          _hasMore = false;
+        }
+      });
+    }
   }
 
   void addToPlaylist() async {
@@ -58,7 +122,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
     final trackName = _selectedTrack["name"];
     final artist = _selectedTrack["artists"][0]["name"];
-    final albumArt = _selectedTrack["album"]["images"][0]["url"];
+    final albumArt = _selectedTrack["album"]["images"].isNotEmpty 
+        ? _selectedTrack["album"]["images"][0]["url"] 
+        : "";
 
     // Fetch preview from deezer since spotify doesnt provide it easily
     final deezerData = await fetchDeezerPreviewUrl(trackName, artist);
@@ -90,11 +156,13 @@ class _SearchScreenState extends State<SearchScreen> {
 
     await DatabaseService().addSongToVoting(targetId, songData);
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text("Added: $trackName – $artist")));
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Added: $trackName – $artist")));
 
-    Navigator.pop(context);
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -114,12 +182,23 @@ class _SearchScreenState extends State<SearchScreen> {
             padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
             child: TextField(
               controller: _searchController,
-              onSubmitted: searchSpotify,
+              onSubmitted: (val) => searchSpotify(val, offset: 0),
               decoration: InputDecoration(
                 hintText: "Search song, artist, or album...",
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: const BorderSide(color: Colors.grey),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFDCD7C9),
+                    width: 2,
+                  ),
                 ),
               ),
             ),
@@ -132,8 +211,18 @@ class _SearchScreenState extends State<SearchScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.builder(
-                    itemCount: _results.length,
+                    controller: _scrollController,
+                    itemCount: _results.length + (_isLoadingMore ? 1 : 0),
                     itemBuilder: (context, index) {
+                      if (index == _results.length) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      }
+                      
                       final item = _results[index];
                       final name = item["name"];
                       final artist = item["artists"][0]["name"];
