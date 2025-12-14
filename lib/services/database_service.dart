@@ -10,9 +10,14 @@ class DatabaseService {
 
   // Users collection
   Future<void> createUser(String uid, String username, String email) async {
+    // Ensure a default playlist document exists
+    await createPlaylistIfMissing('defaultPlaylist');
+
+    // Create user with default playlist selection
     await _db.collection('users').doc(uid).set({
       'username': username,
       'email': email,
+      'currentPlaylistId': 'defaultPlaylist',
     });
   }
 
