@@ -1,5 +1,5 @@
 Github: https://github.com/usmann56/vibzcheck
-Presentation: https://drive.google.com/file/d/1UHXmgmkhifxcHBOsZo4vUqFDFLExqoN9/view?usp=drive_link
+Presentation: https://studentgsu-my.sharepoint.com/:p:/g/personal/kharmon15_student_gsu_edu/IQCQLM9B0DLWTJ3kMWfsgDkTARBN47IwlFec4LTpfzCtpHY?e=brBMQW
 
 AI Usage Log
 
