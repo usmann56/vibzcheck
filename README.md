@@ -16,10 +16,10 @@ AI Usage Log
 
 2025-12-10
 
-- Mood/Genre Tagging: assisted with tagging approach and filtered playback logic, including next-track selection under active filters.
+- Mood/Genre Tagging: assisted with tagging approach and filtered playback logic, including next-track selection under active filters. Tags are updated dynamically once a song is added to the playlist.
 
 - Service Layer: assisted with migrating firebase functions from components files to util files creating a firbase service layer.
 
 2025-12-12
 
-- Pagination: assisted with the paging strategy for search results.
+- Pagination: assisted with pagination with limit offset strategy on scroll for search results.
